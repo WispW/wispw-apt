@@ -24,7 +24,7 @@ echo "deb [signed-by=/etc/apt/keyrings/wispw.gpg] https://repo.wennie99s.top sta
   | sudo tee /etc/apt/sources.list.d/wispw.list
 
 sudo apt update
-sudo apt install xxx
+sudo apt install hostnamefetch
 ```
 
 公钥指纹：
@@ -43,6 +43,9 @@ sudo apt update && sudo apt upgrade
 
 - `.deb` 归档在本仓库 GitHub Releases，并同步到 Pages 的 `pool/`
 - Pages 只保留每个包的最新版本；历史版本请从对应 Release 下载
+- 包均为 `Architecture: all`，索引在 `dists/stable/main/binary-all/`；
+  同时为 amd64、arm64 等常见架构生成空索引，避免 `apt update` 报
+  “doesn't support architecture” 提示
 - Release 正文包含 `Package`、`Version`、`SHA256`
 - Release tag：`<package>-v<version>`
 - Release 附件：`<package>.deb`，不带版本号
