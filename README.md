@@ -42,7 +42,7 @@ sudo apt update && sudo apt upgrade
 ## 仓库说明
 
 - `.deb` 归档在本仓库 GitHub Releases，并同步到 Pages 的 `pool/`
-- Pages 提供 APT 元数据、公钥和实际包
+- Pages 只保留每个包的最新版本；历史版本请从对应 Release 下载
 - Release 正文包含 `Package`、`Version`、`SHA256`
 - Release tag：`<package>-v<version>`
 - Release 附件：`<package>.deb`，不带版本号

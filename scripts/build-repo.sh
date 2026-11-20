@@ -2,6 +2,8 @@
 # Build the WispW APT repository from GitHub Releases.
 #
 # Release contract is documented in README.md.
+# Pages keeps only the latest version of each package; older versions
+# remain available from their GitHub Release assets.
 # Runs on the GitHub Actions Ubuntu runner; local runs need gh, jq,
 # dpkg-deb, apt-ftparchive, gpg, gpgv, gzip and sha256sum.
 
@@ -22,7 +24,7 @@ die() {
     exit 1
 }
 
-for cmd in gh jq dpkg-deb apt-ftparchive gpg gpgv gzip awk sha256sum; do
+for cmd in gh jq dpkg dpkg-deb apt-ftparchive gpg gpgv gzip awk sha256sum; do
     command -v "$cmd" >/dev/null 2>&1 || die "required command not found: $cmd"
 done
 
@@ -41,12 +43,18 @@ workdir=$(mktemp -d)
 trap 'rm -rf "$workdir"' EXIT
 
 pool="$workdir/pool"
+selected_pool="$workdir/selected"
 raw_packages="$workdir/Packages.raw"
 packages="$workdir/Packages"
 filename_map="$workdir/filename-map.tsv"
 
+declare -A latest_version=()
+declare -A latest_tag=()
+declare -A latest_asset=()
+declare -A latest_deb=()
+
 rm -rf "$output_dir"
-mkdir -p "$pool" "$output_dir/dists/$suite/$component/binary-$arch"
+mkdir -p "$pool" "$selected_pool" "$output_dir/dists/$suite/$component/binary-$arch"
 
 if [[ -n ${APT_GPG_KEY_ID:-} ]]; then
     key_id=$APT_GPG_KEY_ID
@@ -139,15 +147,38 @@ for tag in "${tags[@]}"; do
     [[ $body_sha == "$actual_sha" ]] || \
         die "$tag: release body SHA256 does not match .deb"
 
-    relative_path="pool/$tag/$asset"
-    install -d "$output_dir/pool/$tag"
-    install -m 0644 "$deb" "$output_dir/pool/$tag/$asset"
-    printf '%s\t%s\n' "./$tag/$asset" "$relative_path" >> "$filename_map"
+    if [[ -z ${latest_version[$package]:-} ]] || \
+        dpkg --compare-versions "$version" gt "${latest_version[$package]}"; then
+        latest_version[$package]=$version
+        latest_tag[$package]=$tag
+        latest_asset[$package]=$asset
+        latest_deb[$package]=$deb
+    else
+        printf 'skipping %s (%s), latest is %s\n' \
+            "$tag" "$version" "${latest_version[$package]}"
+    fi
 
     printf 'validated %s (%s %s %s)\n' "$tag" "$package" "$version" "$deb_arch"
 done
 
-(cd "$pool" && apt-ftparchive packages .) > "$raw_packages"
+for package in "${!latest_version[@]}"; do
+    tag=${latest_tag[$package]}
+    asset=${latest_asset[$package]}
+    deb=${latest_deb[$package]}
+    relative_path="pool/$tag/$asset"
+
+    install -d "$selected_pool/$tag" "$output_dir/pool/$tag"
+    install -m 0644 "$deb" "$selected_pool/$tag/$asset"
+    install -m 0644 "$deb" "$output_dir/pool/$tag/$asset"
+    printf '%s\t%s\n' "./$tag/$asset" "$relative_path" >> "$filename_map"
+
+    printf 'selected latest %s %s (%s)\n' \
+        "$package" "${latest_version[$package]}" "$tag"
+done
+
+[[ -s $filename_map ]] || die "no packages selected for Pages"
+
+(cd "$selected_pool" && apt-ftparchive packages .) > "$raw_packages"
 [[ -s $raw_packages ]] || die "apt-ftparchive produced an empty Packages file"
 
 awk -F '\t' '
