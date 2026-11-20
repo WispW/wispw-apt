@@ -1,0 +1,19 @@
+# Generated APT repository output
+public/
+pool/
+
+# Temporary signing keyring
+.gnupg/
+
+# Build artifacts
+*.deb
+*.dsc
+*.buildinfo
+*.changes
+
+# Never commit private material
+*-private.asc
+*-revoke.asc
+secrets/
+
+AGENTS.md
