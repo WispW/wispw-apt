@@ -41,7 +41,8 @@ sudo apt update && sudo apt upgrade
 
 ## 仓库说明
 
-- `.deb` 放在本仓库 GitHub Releases；Pages 只放 APT 元数据和公钥
+- `.deb` 归档在本仓库 GitHub Releases，并同步到 Pages 的 `pool/`
+- Pages 提供 APT 元数据、公钥和实际包
 - Release 正文包含 `Package`、`Version`、`SHA256`
 - Release tag：`<package>-v<version>`
 - Release 附件：`<package>.deb`，不带版本号

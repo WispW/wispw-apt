@@ -139,8 +139,10 @@ for tag in "${tags[@]}"; do
     [[ $body_sha == "$actual_sha" ]] || \
         die "$tag: release body SHA256 does not match .deb"
 
-    release_url="https://github.com/$target_repo/releases/download/$tag/$asset"
-    printf '%s\t%s\n' "./$tag/$asset" "$release_url" >> "$filename_map"
+    relative_path="pool/$tag/$asset"
+    install -d "$output_dir/pool/$tag"
+    install -m 0644 "$deb" "$output_dir/pool/$tag/$asset"
+    printf '%s\t%s\n' "./$tag/$asset" "$relative_path" >> "$filename_map"
 
     printf 'validated %s (%s %s %s)\n' "$tag" "$package" "$version" "$deb_arch"
 done
