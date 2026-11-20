@@ -27,6 +27,8 @@ die() {
 [[ -f "$public_dir/dists/stable/InRelease" ]] || die "missing InRelease"
 [[ -f "$public_dir/dists/stable/main/binary-all/Packages" ]] || \
     die "missing Packages"
+[[ -f "$public_dir/dists/stable/main/binary-amd64/Packages" ]] || \
+    die "missing binary-amd64/Packages index"
 [[ -f "$public_dir/wispw-archive-keyring.gpg" ]] || die "missing public key"
 
 command -v gpgv >/dev/null 2>&1 || die "gpgv is required"
@@ -52,6 +54,7 @@ for image in $images; do
         "$image" \
         bash -c '
             set -eux
+            set -o pipefail
             apt-get update -qq
             apt-get install -y -qq --no-install-recommends ca-certificates curl
 
@@ -63,7 +66,11 @@ for image in $images; do
             printf "deb [signed-by=/etc/apt/keyrings/wispw.gpg] %s stable main\n" \
                 "$HOST_URL" > /etc/apt/sources.list.d/wispw.list
 
-            apt-get update -qq
+            apt-get update -q 2>&1 | tee /tmp/apt-update.log
+            if grep -q "Skipping acquire" /tmp/apt-update.log; then
+                echo "apt update warned about an unsupported architecture" >&2
+                exit 1
+            fi
             apt-cache policy "$PACKAGE"
             apt-get install -y -qq --no-install-recommends "$PACKAGE"
             "$PACKAGE" --version

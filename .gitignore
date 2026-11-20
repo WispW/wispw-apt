@@ -2,6 +2,9 @@
 public/
 pool/
 
+# Local scratch space (previews, temporary keys, downloaded fonts)
+.cache/
+
 # Temporary signing keyring
 .gnupg/
 

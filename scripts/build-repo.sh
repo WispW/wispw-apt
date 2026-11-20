@@ -16,6 +16,12 @@ output_dir=${OUTPUT_DIR:-$root/public}
 suite=${SUITE:-stable}
 component=${COMPONENT:-main}
 arch=${ARCH:-all}
+# Packages here are Architecture: all, so the real index lives in
+# binary-all. Clients still probe an index for their own architecture, and
+# APT prints "Skipping acquire ... doesn't support architecture 'amd64'"
+# when that index is absent from Release. Publishing an empty index per
+# architecture keeps `apt update` quiet without duplicating packages.
+client_arches=${CLIENT_ARCHES:-amd64 arm64 armhf i386 ppc64el s390x riscv64}
 origin=${ORIGIN:-WispW}
 label=${LABEL:-WispW APT}
 
@@ -200,12 +206,26 @@ install -m 0644 "$packages" \
 gzip -9 -n -c "$packages" > \
     "$output_dir/dists/$suite/$component/binary-$arch/Packages.gz"
 
+# Empty per-architecture indexes: the packages themselves are arch:all and
+# stay in binary-all, but APT needs a file to resolve the native arch.
+for client_arch in $client_arches; do
+    [[ $client_arch == "$arch" ]] && continue
+    [[ $client_arch =~ ^[a-z0-9]+$ ]] || \
+        die "invalid client architecture: $client_arch"
+
+    install -d "$output_dir/dists/$suite/$component/binary-$client_arch"
+    : > "$output_dir/dists/$suite/$component/binary-$client_arch/Packages"
+    gzip -9 -n -c \
+        "$output_dir/dists/$suite/$component/binary-$client_arch/Packages" > \
+        "$output_dir/dists/$suite/$component/binary-$client_arch/Packages.gz"
+done
+
 apt-ftparchive \
     -o "APT::FTPArchive::Release::Origin=$origin" \
     -o "APT::FTPArchive::Release::Label=$label" \
     -o "APT::FTPArchive::Release::Suite=$suite" \
     -o "APT::FTPArchive::Release::Codename=$suite" \
-    -o "APT::FTPArchive::Release::Architectures=$arch" \
+    -o "APT::FTPArchive::Release::Architectures=$arch $client_arches" \
     -o "APT::FTPArchive::Release::Components=$component" \
     -o "APT::FTPArchive::Release::Description=$label" \
     release "$output_dir/dists/$suite" > "$output_dir/dists/$suite/Release"
@@ -235,4 +255,5 @@ cp -a "$root/site/." "$output_dir/"
 
 printf 'repository generated at %s\n' "$output_dir"
 printf 'suite=%s component=%s arch=%s\n' "$suite" "$component" "$arch"
+printf 'client architectures: %s\n' "$client_arches"
 printf 'packages: %s\n' "$(grep -c '^Package: ' "$packages")"
