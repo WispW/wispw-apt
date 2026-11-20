@@ -228,30 +228,10 @@ if [[ -f "$root/keyring/wispw-archive-keyring.asc" ]]; then
     install -m 0644 "$root/keyring/wispw-archive-keyring.asc" "$output_dir/"
 fi
 
-cat > "$output_dir/index.html" <<'EOF'
-<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WispW APT Repository</title>
-</head>
-<body>
-  <h1>WispW APT Repository</h1>
-  <p>第三方 Debian/Ubuntu 软件源，不是官方仓库。</p>
-  <pre><code>sudo install -d -m 0755 /etc/apt/keyrings
-
-curl -fsSL https://repo.wennie99s.top/wispw-archive-keyring.gpg \
-  | sudo tee /etc/apt/keyrings/wispw.gpg &gt;/dev/null
-
-echo "deb [signed-by=/etc/apt/keyrings/wispw.gpg] https://repo.wennie99s.top stable main" \
-  | sudo tee /etc/apt/sources.list.d/wispw.list
-
-sudo apt update
-sudo apt install hostnamefetch</code></pre>
-</body>
-</html>
-EOF
+if [[ ! -f "$root/site/index.html" ]]; then
+    die "missing site/index.html"
+fi
+cp -a "$root/site/." "$output_dir/"
 
 printf 'repository generated at %s\n' "$output_dir"
 printf 'suite=%s component=%s arch=%s\n' "$suite" "$component" "$arch"
